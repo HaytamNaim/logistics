@@ -1,0 +1,39 @@
+.root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+}
+
+.main {
+  flex: 1;
+  padding: 1rem;
+  overflow: auto;
+}
+
+.garden {
+  display: flex;
+  gap: 1rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  min-height: calc(100vh - 56px - 2rem);
+}
+
+.center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .garden {
+    flex-wrap: wrap;
+  }
+
+  .center {
+    order: 1;
+    flex: 1 1 100%;
+  }
+}

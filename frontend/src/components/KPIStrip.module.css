@@ -1,0 +1,51 @@
+.strip {
+  display: flex;
+  align-items: stretch;
+  gap: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-rest);
+  border: 1px solid var(--border-subtle);
+}
+
+.item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.value[data-positive="true"] {
+  color: var(--brand);
+}
+
+.label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.barTrack {
+  height: 4px;
+  margin-top: 0.35rem;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--status-success), var(--brand-hover));
+  border-radius: 2px;
+  transition: width var(--duration-normal) var(--ease-out);
+}

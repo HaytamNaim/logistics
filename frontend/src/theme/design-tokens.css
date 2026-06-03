@@ -1,0 +1,63 @@
+/**
+ * Logistics in Harmony — Design tokens (DESIGN_SYSTEM.md)
+ * Nature-close palette, soft-UI, WCAG 2.1 AA–aligned
+ */
+:root {
+  /* Surfaces */
+  --bg-base: #f6f4f0;
+  --bg-surface: #e8e4dd;
+  --bg-elevated: rgba(255, 255, 255, 0.92);
+  --bg-frost: #ffffff;
+
+  /* Text */
+  --text-primary: #3d3630;
+  --text-secondary: #6b645c;
+
+  /* Brand & primary */
+  --brand: #5b7b6b;
+  --brand-hover: #8fa99a;
+  --secondary: #4a6572;
+
+  /* Status (organic) */
+  --status-success: #6b8e6b;
+  --status-warning: #d4a04a;
+  --status-attention: #c17f59;
+  --status-info: #7b9aaf;
+  --status-inactive: rgba(107, 100, 92, 0.6);
+  --accent-clay: #b8957a;
+
+  /* Borders & dividers */
+  --border: rgba(196, 189, 180, 0.8);
+  --border-subtle: rgba(196, 189, 180, 0.5);
+
+  /* Shadows (Charcoal Bark family) */
+  --shadow-rest: 0 1px 3px rgba(61, 54, 48, 0.06);
+  --shadow-elevated: 0 4px 12px rgba(61, 54, 48, 0.08);
+  --shadow-overlay: 0 8px 24px rgba(61, 54, 48, 0.12);
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* Typography */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "IBM Plex Mono", monospace;
+
+  /* Motion */
+  --duration-fast: 200ms;
+  --duration-normal: 280ms;
+  --duration-moment: 420ms;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-moment: 0ms;
+  }
+}

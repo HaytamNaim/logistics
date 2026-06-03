@@ -1,0 +1,84 @@
+/**
+ * Global styles — Logistics in Harmony
+ * Typography, focus, base layout
+ */
+@import "./design-tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-base);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Focus ring — WCAG 2.1, never remove */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-body);
+  font-weight: 500;
+  line-height: 1.25;
+  margin: 0 0 0.5em;
+  color: var(--text-primary);
+}
+
+h1 { font-size: 1.75rem; font-family: var(--font-display); font-weight: 500; }
+h2 { font-size: 1.25rem; }
+h3 { font-size: 1.125rem; }
+
+/* Links */
+a {
+  color: var(--brand);
+  text-decoration: none;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+a:hover {
+  color: var(--brand-hover);
+}
+
+/* Utility for data/mono */
+.font-mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+/* Flow divider (short, rounded) */
+.flow-divider {
+  display: block;
+  width: 40%;
+  max-width: 80px;
+  height: 2px;
+  margin: 0.75rem 0;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--border-subtle), transparent);
+}

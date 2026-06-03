@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import existing design tokens for backward compatibility */
+@import './theme/design-tokens.css';
+
+/* Global base styles */
+@layer base {
+  body {
+    @apply font-body text-charcoal bg-stone-paper;
+  }
+  
+  .font-mono {
+    @apply font-mono;
+  }
+}
+
+/* Custom component utilities */
+@layer components {
+  .btn-primary {
+    @apply bg-sage text-white px-4 py-2 rounded-md hover:bg-sage-light transition-colors duration-fast;
+  }
+  
+  .btn-secondary {
+    @apply bg-slate text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors duration-fast;
+  }
+  
+  .card {
+    @apply bg-sand rounded-md shadow-rest p-4;
+  }
+  
+  .card-elevated {
+    @apply bg-frost rounded-md shadow-elevated p-6;
+  }
+}
