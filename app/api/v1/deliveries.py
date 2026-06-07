@@ -230,8 +230,53 @@ def delivery_location_heartbeat(
 
 
 @router.websocket("/{delivery_id}/track")
-async def track_websocket(websocket: WebSocket, delivery_id: str):
-    """Simple WebSocket: clients connect to receive status/location updates. Auth via query or header in production."""
+async def track_websocket(
+    websocket: WebSocket,
+    delivery_id: str,
+    token: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """WebSocket: stream status/location updates for a delivery.
+
+    Authentication: pass a valid access JWT as the ``token`` query parameter,
+    e.g. ``ws://.../track?token=<jwt>``.  Admins and fleet managers may track
+    any delivery; a driver may only track deliveries assigned to them.
+    Unauthenticated or unauthorised connections are closed with code 1008.
+    """
+    from app.core.security import decode_token
+    from app.models import User
+
+    # --- authentication ---
+    if not token:
+        await websocket.close(code=1008)
+        return
+
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "access":
+        await websocket.close(code=1008)
+        return
+
+    sub = payload.get("sub")
+    if not sub:
+        await websocket.close(code=1008)
+        return
+
+    user = db.query(User).filter(User.id == sub, User.is_active.is_(True)).first()
+    if not user:
+        await websocket.close(code=1008)
+        return
+
+    # --- delivery existence + ownership ---
+    d = db.query(Delivery).filter(Delivery.id == delivery_id).first()
+    if not d:
+        await websocket.close(code=1008)
+        return
+
+    if not _driver_can_see_delivery(db, str(user.id), d):
+        await websocket.close(code=1008)
+        return
+
+    # --- connection accepted ---
     await websocket.accept()
     try:
         while True:
