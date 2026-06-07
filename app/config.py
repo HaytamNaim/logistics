@@ -11,16 +11,13 @@ class Settings(BaseSettings):
     debug: bool = Field(default=False, alias="DEBUG")
 
     # Database
-    database_url: str = Field(
-        default="postgresql://postgres:postgres@localhost:5433/logistics",
-        alias="DATABASE_URL",
-    )
+    database_url: str = Field(alias="DATABASE_URL")
 
     # Redis
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
 
     # JWT
-    jwt_secret_key: str = Field(default="change-me-in-production", alias="JWT_SECRET_KEY")
+    jwt_secret_key: str = Field(alias="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
     jwt_access_expire_minutes: int = Field(default=15, alias="JWT_ACCESS_EXPIRE_MINUTES")
     jwt_refresh_expire_days: int = Field(default=7, alias="JWT_REFRESH_EXPIRE_DAYS")

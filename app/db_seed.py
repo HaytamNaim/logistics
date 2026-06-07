@@ -1,4 +1,5 @@
 """Seed roles and default admin user. Run once or on first deploy."""
+import os
 from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models import User, Role, UserRole
@@ -16,9 +17,10 @@ def seed(db: Session) -> None:
         return
     if db.query(User).filter(User.email == "admin@logistics.local").first():
         return
+    # WARNING: set SEED_ADMIN_PASSWORD env var in production
     admin = User(
         email="admin@logistics.local",
-        password_hash=hash_password("admin123"),
+        password_hash=hash_password(os.environ.get("SEED_ADMIN_PASSWORD", "admin123")),
         full_name="System Admin",
         is_active=True,
     )
@@ -32,6 +34,6 @@ if __name__ == "__main__":
     db = SessionLocal()
     try:
         seed(db)
-        print("Seed done: roles + admin@logistics.local / admin123")
+        print("Seed done: roles + admin@logistics.local / <SEED_ADMIN_PASSWORD>")
     finally:
         db.close()
