@@ -7,14 +7,24 @@ from fastapi import Request
 from app.models import AuditLog
 
 
+_PII_PATTERNS = (
+    "password", "secret", "token", "key", "phone", "email",
+    "address", "ssn", "dob", "birth", "credit", "card", "cvv", "pin",
+)
+
+
 def sanitize_for_audit(data: dict[str, Any] | None) -> dict[str, Any] | None:
     """Optionally mask PII in old_value/new_value."""
     if data is None:
         return None
-    out = dict(data)
-    for key in ("customer_phone", "customer_email", "password_hash"):
-        if key in out and out[key] is not None:
-            out[key] = "[REDACTED]"
+    out = {}
+    for k, v in data.items():
+        if any(pattern in k.lower() for pattern in _PII_PATTERNS):
+            out[k] = "[REDACTED]"
+        elif isinstance(v, dict):
+            out[k] = sanitize_for_audit(v)
+        else:
+            out[k] = v
     return out
 
 
@@ -32,7 +42,11 @@ def log_audit(
     client_ip = None
     user_agent = None
     if request:
-        client_ip = request.client.host if request.client else None
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        else:
+            client_ip = request.headers.get("X-Real-IP") or (request.client.host if request.client else None)
         user_agent = (request.headers.get("user-agent") or "")[:512]
     entry = AuditLog(
         user_id=str(user_id) if user_id else None,
