@@ -63,9 +63,10 @@ def seed_sample_data(db: Session) -> None:
     driver_role = db.query(Role).filter(Role.code == "DRIVER").first()
     drivers = []
     for i in range(3):
+        # WARNING: set SEED_DRIVER_PASSWORD env var in production
         driver_user = User(
             email=f"driver{i + 1}@logistics.local",
-            password_hash=hash_password("driver123"),
+            password_hash=hash_password(os.environ.get("SEED_DRIVER_PASSWORD", "driver123")),
             full_name=f"Driver {chr(65 + i)}. Smith",
             is_active=True,
         )
@@ -146,8 +147,8 @@ def seed_sample_data(db: Session) -> None:
     print(f"   {len(zones)} zones, {len(addresses)} addresses, {len(drivers)} drivers")
     print(f"   {len(customers)} orders, 7 deliveries (5 assigned)")
     print("\nCredentials:")
-    print("   admin@logistics.local / admin123")
-    print("   driver1@logistics.local / driver123")
+    print("   admin@logistics.local / <SEED_ADMIN_PASSWORD>")
+    print("   driver1@logistics.local / <SEED_DRIVER_PASSWORD>")
 
 
 if __name__ == "__main__":
