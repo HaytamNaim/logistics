@@ -1,12 +1,18 @@
 """Logistics and Delivery Management System — FastAPI application."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from app.config import get_settings
 from app.database import engine, Base
+from app.core.limiter import limiter
 from app.api.v1 import auth, me, audit, zones, addresses, orders, deliveries, drivers, routes, analytics
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="1.0.0", docs_url="/docs", redoc_url="/redoc")
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,

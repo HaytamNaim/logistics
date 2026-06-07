@@ -1,8 +1,9 @@
 """POST /auth/login, POST /auth/token, POST /auth/refresh."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database import get_db
+from app.core.limiter import limiter
 from app.models import User, UserRole, Role
 from app.core.security import (
     verify_password,
@@ -27,7 +28,8 @@ def _issue_tokens_for_user(user, db) -> TokenResponse:
 
 
 @router.post("/token", response_model=TokenResponse)
-def token(form: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)):
+@limiter.limit("5/minute")
+def token(request: Request, form: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)):
     """OAuth2-compatible token endpoint (username=email, password=password)."""
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.password_hash):
@@ -38,7 +40,8 @@ def token(form: OAuth2PasswordRequestForm = Depends(), db=Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, db=Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request: Request, body: LoginRequest, db=Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
@@ -48,7 +51,8 @@ def login(body: LoginRequest, db=Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-def refresh(body: RefreshRequest, db=Depends(get_db)):
+@limiter.limit("10/minute")
+def refresh(request: Request, body: RefreshRequest, db=Depends(get_db)):
     payload = decode_token(body.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
