@@ -1,5 +1,6 @@
 """GET /audit-logs — query audit trail (Admin)."""
 from __future__ import annotations
+from datetime import datetime
 from uuid import UUID
 from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Query, HTTPException, status
@@ -13,6 +14,13 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 router = APIRouter(prefix="/audit-logs", tags=["audit"])
+
+
+def _parse_date(value: str, field_name: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid date format for '{field_name}'. Use ISO 8601 (e.g. 2024-01-15T00:00:00Z).")
 
 
 @router.get("", response_model=list[AuditLogResponse])
@@ -39,10 +47,8 @@ def list_audit_logs(
     if user_id:
         q = q.filter(AuditLog.user_id == str(user_id))
     if from_date:
-        from datetime import datetime
-        q = q.filter(AuditLog.created_at >= datetime.fromisoformat(from_date.replace("Z", "+00:00")))
+        q = q.filter(AuditLog.created_at >= _parse_date(from_date, "from_date"))
     if to_date:
-        from datetime import datetime
-        q = q.filter(AuditLog.created_at <= datetime.fromisoformat(to_date.replace("Z", "+00:00")))
+        q = q.filter(AuditLog.created_at <= _parse_date(to_date, "to_date"))
     rows = q.order_by(desc(AuditLog.created_at)).offset(offset).limit(limit).all()
     return [AuditLogResponse.model_validate(r) for r in rows]
