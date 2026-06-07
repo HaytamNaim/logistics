@@ -15,40 +15,30 @@ import type {
 const API_BASE = '/api/v1';
 
 // Prevents concurrent refresh attempts from triggering multiple refresh calls
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-async function refreshTokens(): Promise<string> {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) throw new Error('No refresh token');
-
+async function refreshTokens(): Promise<void> {
+    // Tokens are stored in HttpOnly cookies — the browser sends the refresh_token
+    // cookie automatically to /api/v1/auth/refresh; no localStorage needed.
     const response = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        body: JSON.stringify({}),
     });
 
     if (!response.ok) {
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
         throw new Error('Session expired');
     }
-
-    const data = await response.json();
-    localStorage.setItem('access_token', data.access_token);
-    if (data.refresh_token) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-    }
-    return data.access_token;
+    // The server sets the new access_token cookie; nothing to store locally.
 }
 
 async function apiCall<T>(endpoint: string, options?: RequestInit, retried = false): Promise<T> {
-    const token = localStorage.getItem('access_token');
-
     const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
+        credentials: 'include',  // send HttpOnly cookies automatically
         headers: {
             'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
             ...options?.headers,
         },
     });
@@ -72,6 +62,14 @@ async function apiCall<T>(endpoint: string, options?: RequestInit, retried = fal
     }
 
     return response.json();
+}
+
+// Auth API
+export async function logout(): Promise<void> {
+    await fetch(`${API_BASE}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+    });
 }
 
 // Orders API

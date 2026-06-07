@@ -1,7 +1,7 @@
 """Role-Based Access Control — permissions and get_current_user."""
 from typing import Annotated
 from uuid import UUID
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -37,12 +37,15 @@ PERMISSIONS = {
 
 
 def get_optional_user(
+    request: Request,
     db=Depends(get_db),
     token: str | None = Depends(oauth2_scheme),
 ) -> User | None:
-    if not token:
+    # Prefer Authorization header token; fall back to HttpOnly cookie
+    resolved_token = token or request.cookies.get("access_token")
+    if not resolved_token:
         return None
-    payload = decode_token(token)
+    payload = decode_token(resolved_token)
     if not payload or payload.get("type") != "access":
         return None
     sub = payload.get("sub")
