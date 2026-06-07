@@ -92,6 +92,10 @@ def update_driver(
     d = db.query(Driver).filter(Driver.id == str(driver_id)).first()
     if not d:
         raise HTTPException(404, "Driver not found")
+    roles = [r[0] for r in get_user_roles(db, str(current_user.id))]
+    if "DRIVER" in roles and "ADMIN" not in roles and "FLEET_MANAGER" not in roles and "DISPATCHER" not in roles:
+        if d.user_id != str(current_user.id):
+            raise HTTPException(status_code=403, detail="Access denied")
     old = {k: getattr(d, k) for k in body.model_dump(exclude_unset=True)}
     for k, v in body.model_dump(exclude_unset=True).items():
         setattr(d, k, v)
