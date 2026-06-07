@@ -1,7 +1,8 @@
-"""POST /auth/login, POST /auth/token, POST /auth/refresh."""
+"""POST /auth/login, POST /auth/token, POST /auth/refresh, POST /auth/logout."""
 import logging
 import time
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -16,6 +17,7 @@ from app.core.security import (
 )
 from app.core.rbac import get_user_roles
 from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -49,15 +51,51 @@ def _clear_failures(email: str) -> None:
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+settings = get_settings()
+
+# Cookie max-age values derived from the JWT settings
+_ACCESS_MAX_AGE = settings.jwt_access_expire_minutes * 60  # seconds
+_REFRESH_MAX_AGE = settings.jwt_refresh_expire_days * 24 * 60 * 60  # seconds
 
 
-def _issue_tokens_for_user(user, db) -> TokenResponse:
+def _issue_tokens_for_user(user, db) -> tuple[str, str]:
+    """Return (access_token, refresh_token) strings."""
     roles_with_scope = get_user_roles(db, str(user.id))
     role_codes = [r[0] for r in roles_with_scope]
     scope_zone_id = roles_with_scope[0][1] if roles_with_scope else None
     access_token = create_access_token(str(user.id), role_codes, scope_zone_id)
     refresh_token = create_refresh_token(str(user.id))
-    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+    return access_token, refresh_token
+
+
+def _build_token_response(access_token: str, refresh_token: str) -> JSONResponse:
+    """Build a JSONResponse that also sets HttpOnly token cookies."""
+    response = JSONResponse(
+        content={
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+        }
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=_ACCESS_MAX_AGE,
+        path="/",
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=_REFRESH_MAX_AGE,
+        path="/api/v1/auth/refresh",
+    )
+    return response
 
 
 @router.post("/token", response_model=TokenResponse)
@@ -69,7 +107,8 @@ def token(request: Request, form: OAuth2PasswordRequestForm = Depends(), db=Depe
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User inactive")
-    return _issue_tokens_for_user(user, db)
+    access_token, refresh_token = _issue_tokens_for_user(user, db)
+    return _build_token_response(access_token, refresh_token)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -94,14 +133,22 @@ def login(request: Request, body: LoginRequest, db=Depends(get_db)):
 
     _clear_failures(email)
     logger.info("Successful login for user_id=%s from ip=%s", user.id, client_ip)
-    return _issue_tokens_for_user(user, db)
+    access_token, refresh_token = _issue_tokens_for_user(user, db)
+    return _build_token_response(access_token, refresh_token)
 
 
 @router.post("/refresh", response_model=TokenResponse)
 @limiter.limit("10/minute")
 def refresh(request: Request, body: RefreshRequest, db=Depends(get_db)):
     client_ip = request.client.host if request.client else "unknown"
-    payload = decode_token(body.refresh_token)
+    # Accept refresh token from request body or cookie fallback
+    refresh_token_value = body.refresh_token
+    if not refresh_token_value:
+        refresh_token_value = request.cookies.get("refresh_token")
+    if not refresh_token_value:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    payload = decode_token(refresh_token_value)
     if not payload or payload.get("type") != "refresh":
         logger.warning("Invalid refresh token from ip=%s", client_ip)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -116,4 +163,29 @@ def refresh(request: Request, body: RefreshRequest, db=Depends(get_db)):
     role_codes = [r[0] for r in roles_with_scope]
     scope_zone_id = roles_with_scope[0][1] if roles_with_scope else None
     access_token = create_access_token(str(user.id), role_codes, scope_zone_id)
-    return TokenResponse(access_token=access_token, refresh_token=body.refresh_token)
+
+    response = JSONResponse(
+        content={
+            "access_token": access_token,
+            "refresh_token": refresh_token_value,
+            "token_type": "bearer",
+        }
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=_ACCESS_MAX_AGE,
+        path="/",
+    )
+    return response
+
+
+@router.post("/logout")
+async def logout():
+    response = JSONResponse(content={"message": "Logged out"})
+    response.delete_cookie("access_token", path="/")
+    response.delete_cookie("refresh_token", path="/api/v1/auth/refresh")
+    return response
