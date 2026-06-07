@@ -15,6 +15,13 @@ from fastapi import Request
 router = APIRouter(prefix="/orders", tags=["orders"])
 
 
+def _parse_date(value: str, field_name: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid date format for '{field_name}'. Use ISO 8601 (e.g. 2024-01-15T00:00:00Z).")
+
+
 def _order_to_response(o: Order, db: Session) -> OrderResponse:
     items = [OrderItemResponse.model_validate(i) for i in o.order_items]
     addr = None
@@ -63,9 +70,9 @@ def list_orders(
         if zone_id:
             q = q.filter(DeliveryAddress.zone_id == str(zone_id))
         if from_date:
-            q = q.filter(Order.requested_delivery_start >= datetime.fromisoformat(from_date.replace("Z", "+00:00")))
+            q = q.filter(Order.requested_delivery_start >= _parse_date(from_date, "from_date"))
         if to_date:
-            q = q.filter(Order.requested_delivery_end <= datetime.fromisoformat(to_date.replace("Z", "+00:00")))
+            q = q.filter(Order.requested_delivery_end <= _parse_date(to_date, "to_date"))
         if search:
             term = f"%{search}%"
             q = q.filter(or_(

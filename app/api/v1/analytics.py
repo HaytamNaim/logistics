@@ -1,6 +1,6 @@
 """Analytics KPIs: delivery speed, delay rate, driver efficiency."""
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
@@ -9,6 +9,13 @@ from app.core.rbac import require_permission
 from app.schemas.analytics import KPIsResponse
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+def _parse_date(value: str, field_name: str) -> datetime:
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid date format for '{field_name}'. Use ISO 8601 (e.g. 2024-01-15T00:00:00Z).")
 
 
 @router.get("/kpis", response_model=KPIsResponse)
@@ -23,9 +30,9 @@ def get_kpis(
     end = datetime.utcnow()
     start = end - timedelta(days=30)
     if from_date:
-        start = datetime.fromisoformat(from_date.replace("Z", "+00:00"))
+        start = _parse_date(from_date, "from_date")
     if to_date:
-        end = datetime.fromisoformat(to_date.replace("Z", "+00:00"))
+        end = _parse_date(to_date, "to_date")
 
     q = db.query(Delivery).filter(
         Delivery.status.in_(["DELIVERED", "FAILED", "RETURNED"]),
@@ -73,9 +80,9 @@ def get_delivery_metrics(
     end = datetime.utcnow()
     start = end - timedelta(days=30)
     if from_date:
-        start = datetime.fromisoformat(from_date.replace("Z", "+00:00"))
+        start = _parse_date(from_date, "from_date")
     if to_date:
-        end = datetime.fromisoformat(to_date.replace("Z", "+00:00"))
+        end = _parse_date(to_date, "to_date")
     counts = db.query(Delivery.status, func.count(Delivery.id)).filter(
         Delivery.created_at >= start,
         Delivery.created_at <= end,
@@ -93,9 +100,9 @@ def get_driver_metrics(
     end = datetime.utcnow()
     start = end - timedelta(days=30)
     if from_date:
-        start = datetime.fromisoformat(from_date.replace("Z", "+00:00"))
+        start = _parse_date(from_date, "from_date")
     if to_date:
-        end = datetime.fromisoformat(to_date.replace("Z", "+00:00"))
+        end = _parse_date(to_date, "to_date")
     rows = db.query(Delivery.driver_id, func.count(Delivery.id)).filter(
         Delivery.status == "DELIVERED",
         Delivery.status_changed_at >= start,
